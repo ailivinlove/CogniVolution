@@ -1,0 +1,1053 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <title> CogniVolution </title>
+  <!-- Base styles and layouts copied from the original multi-mode N-back game -->
+  <style>
+    /* Minimal base styles from the original file */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f9fafb; padding: 1.5rem; min-height: 100vh; }
+    .container { max-width: 72rem; margin: 0 auto; }
+    .card { background: white; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); padding: 1.5rem; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+    .title { display: flex; align-items: center; gap: 0.75rem; }
+    .title h1 { font-size: 1.875rem; font-weight: bold; color: #374151; }
+    .score-display { font-size: 0.875rem; font-weight: 600; text-align: right; }
+    .settings-display { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.75rem; color: #6b7280; text-align: right; line-height: 1.4; }
+    .settings-display .setting-item { display: block; margin-bottom: 0.25rem; }
+    .settings-display .setting-item:last-child { margin-bottom: 0; }
+    .mode-selection-screen, .setup-screen, .results-screen, .game-screen { text-align: center; }
+    .mode-options { display: grid; grid-template-columns: 1fr; gap: 1.5rem; max-width: 600px; margin: 0 auto; }
+    .mode-card { border: 2px solid #e5e7eb; border-radius: 1rem; padding: 2rem; cursor: pointer; transition: all 0.3s; background: white; }
+    .mode-card:hover { border-color: #3b82f6; background: #f8fafc; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .mode-card.selected { border-color: #3b82f6; background: #eff6ff; }
+    .mode-card h3 { font-size: 1.5rem; font-weight: bold; color: #1f2937; margin-bottom: 0.75rem; }
+    .mode-card p { color: #6b7280; font-size: 0.875rem; line-height: 1.5; }
+    .btn { padding: 0.75rem 2rem; border: none; border-radius: 0.5rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #6b7280; color: white; }
+    .btn-secondary:hover { background: #4b5563; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .hidden { display: none; }
+    /* Voice game scoped styles */
+    .voice-game { --bg:#0b0d10; --fg:#e6fbff; --a:#00ccff; --mut:#8fe7ff; padding:1rem; background:var(--bg); color:var(--fg); border-radius:0.5rem; }
+    .voice-game * { box-sizing:border-box; }
+    .voice-game .row { display:flex; gap:12px; flex-wrap:wrap; }
+    .voice-game .col { flex:1 1 360px; }
+    .voice-game .box { background:#101418; border:1px solid rgba(0,200,255,.25); border-radius:14px; padding:12px; }
+    .voice-game .title { font-weight:800; margin-bottom:6px; letter-spacing:.3px; color:var(--fg); }
+    .voice-game .btn { background:#0b0d10; color:var(--a); border:1px solid var(--a); border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; }
+    .voice-game .btn:disabled { opacity:.5; cursor:not-allowed; }
+    .voice-game label { font-size:12px; color:var(--mut); display:block; margin:6px 0; }
+    .voice-game input[type=range], .voice-game input[type=number], .voice-game select { width:100%; }
+    .voice-game select { min-height:38px; }
+    .voice-game .kbd { border:1px solid rgba(255,255,255,.25); padding:2px 6px; border-radius:6px; background:#0b0d10; }
+    .voice-game .mut { color:var(--mut); font-size:12px; }
+    .voice-game .badge { display:inline-block; padding:2px 6px; border:1px solid rgba(0,200,255,.3); border-radius:8px; font-size:12px; color:var(--mut); margin-left:6px; }
+    .voice-game #premiseText { margin-top:12px; min-height:90px; background:#0e1113; border:1px solid rgba(0,200,255,.25); border-radius:12px; padding:10px; font-size:18px; line-height:1.6; color:var(--fg); }
+    .voice-game #premiseText .rel { padding:0 4px; border-radius:6px; }
+    .voice-game #premiseText .rel.active { background:rgba(0,200,255,.20); outline:1px solid rgba(0,200,255,.45); }
+    .voice-game #premiseText .sep { opacity:.65; color:var(--fg); }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div class="header">
+      <div class="title">
+        <span style="font-size:2rem;">🧠</span>
+        <h1>Relational-Spatial Dual N-Back</h1>
+      </div>
+      <div class="header-right">
+        <div id="scoreDisplay" class="score-display hidden"></div>
+        <div id="settingsDisplay" class="settings-display hidden"></div>
+      </div>
+    </div>
+    <!-- Mode selection with additional voice mode -->
+    <div id="modeSelectionScreen" class="mode-selection-screen">
+      <h2 style="font-size:1.5rem;font-weight:600;margin-bottom:2rem;">Choose Your Game Mode</h2>
+      <div class="mode-options">
+        <div class="mode-card" data-mode="ultra"><h3>Ultra-N-Relational-Reasoning</h3><p>Extreme mathematical logic with algebraic operators, modal logic, and temporal indices.</p></div>
+        <div class="mode-card" data-mode="advanced"><h3>Advanced-N-Relational-Reasoning</h3><p>Ultra-complex logical reasoning with advanced mathematical and computational relationships.</p></div>
+        <div class="mode-card" data-mode="relational"><h3>Relational N-Back</h3><p>Focus purely on logical reasoning. Analyze spatial relationships between entities across n-back trials.</p></div>
+        <div class="mode-card" data-mode="spatial"><h3>Spatial N-Back</h3><p>Track square positions in a 3×3 grid across n-back trials with extreme cognitive interference.</p></div>
+        <div class="mode-card" data-mode="dual"><h3>Dual N-Back</h3><p>Simultaneously track both spatial positions and logical relationships.</p></div>
+        <div class="mode-card" data-mode="voice"><h3>Voice N-Match</h3><p>Logic-only N-match game with spoken premises. Test your reasoning with voice-guided challenges.</p></div>
+      </div>
+      <button id="continueToSetup" class="btn btn-primary" style="margin-top:2rem;" disabled>Continue to Setup →</button>
+    </div>
+    <!-- Setup screen (simplified for brevity) -->
+    <div id="setupScreen" class="setup-screen hidden">
+      <div id="setupContent"></div>
+      <button id="startGameBtn" class="btn btn-primary" style="margin-top:2rem;">▶ Start Game</button>
+      <button id="backToModeBtn" class="btn btn-secondary" style="margin-top:2rem;margin-left:1rem;">← Back to Mode Selection</button>
+    </div>
+    <!-- Results screen -->
+    <div id="resultsScreen" class="results-screen hidden">
+      <h2 style="font-size:1.5rem;font-weight:bold;color:#16a34a;margin-bottom:1.5rem;">Session Complete!</h2>
+      <div class="results-panel">
+        <h3 style="font-weight:600;margin-bottom:0.5rem;">Final Scores</h3>
+        <div id="finalScores"></div>
+      </div>
+      <div style="margin-top:2rem;">
+        <button id="newSessionBtn" class="btn btn-primary">🔄 Start New Session</button>
+        <button id="changeModeBtn" class="btn btn-secondary" style="margin-left:1rem;">← Change Game Mode</button>
+      </div>
+    </div>
+    <!-- Game screen -->
+    <div id="gameScreen" class="game-screen hidden">
+      <div id="gameContent"></div>
+      <div class="controls">
+        <button id="pauseBtn" class="btn btn-secondary">⏸ Pause</button>
+        <button id="resetBtn" class="btn btn-danger">🔄 Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Load the voice game logic as external script -->
+
+<script>
+  // Simple multi-mode state manager.  Only the voice integration is fully implemented.
+  let selectedMode = null;
+  document.querySelectorAll('.mode-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedMode = card.dataset.mode;
+      document.getElementById('continueToSetup').disabled = false;
+    });
+  });
+  document.getElementById('continueToSetup').onclick = () => {
+    document.getElementById('modeSelectionScreen').classList.add('hidden');
+    document.getElementById('setupScreen').classList.remove('hidden');
+    renderSetup();
+  };
+  document.getElementById('backToModeBtn').onclick = () => {
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('modeSelectionScreen').classList.remove('hidden');
+    document.getElementById('continueToSetup').disabled = true;
+    selectedMode = null;
+  };
+  document.getElementById('startGameBtn').onclick = () => {
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('gameScreen').classList.remove('hidden');
+    startSelectedMode();
+  };
+  function renderSetup() {
+    const container = document.getElementById('setupContent');
+    if (selectedMode === 'voice') {
+      container.innerHTML = `<h3 style="margin-bottom:1rem;">Voice N-Match Setup</h3><p>This mode uses spoken relational premises. You can adjust N-back level and trials here; additional voice settings are configured in-game.</p><div class="control-group"><label>N-Back Level: <span id="nBackLevelVal">1</span></label><input id="nBackLevel" type="range" min="1" max="10" value="1"></div><div class="control-group"><label>Session Length: <span id="maxTrialsVal">40</span> trials</label><input id="maxTrials" type="range" min="10" max="100" step="5" value="40"></div>`;
+      document.getElementById('nBackLevel').oninput = e => { document.getElementById('nBackLevelVal').textContent = e.target.value; };
+      document.getElementById('maxTrials').oninput = e => { document.getElementById('maxTrialsVal').textContent = e.target.value; };
+    } else {
+      container.innerHTML = `<p>Setup for ${selectedMode} mode is not implemented in this simplified example.</p>`;
+    }
+  }
+  function startSelectedMode() {
+    const gameContent = document.getElementById('gameContent');
+    // Hide generic controls for voice mode
+    document.querySelector('.controls').classList.remove('hidden');
+    if (selectedMode === 'voice') {
+      document.querySelector('.controls').classList.add('hidden');
+      // inject voice UI
+      gameContent.innerHTML = `
+      <div class="voice-game" id="voiceGameContainer">
+        <div class="wrap">
+          <div class="row">
+            <div class="col">
+              <div class="box">
+                <div class="title">Timing &amp; Complexity</div>
+                <label>N-back level: <span id="nVal">1</span></label>
+                <input id="n" type="range" min="1" max="10" value="1">
+                <label>Trials per block: <span id="tVal">40</span></label>
+                <input id="trials" type="range" min="10" max="5000" step="5" value="40">
+                <label>Pause between relations in the same premise (seconds): <span id="pVal">1.0 s</span></label>
+                <input id="pauseTime" type="range" min="0" max="60" step="0.1" value="1">
+                <label>Pause between premises (seconds): <span id="premiseIntervalVal">1.0 s</span></label>
+                <input id="premiseInterval" type="range" min="0" max="60" step="0.1" value="1">
+                <label>Target match rate: <span id="rVal">25%</span></label>
+                <input id="rate" type="range" min="0" max="100" step="1" value="25">
+                <hr style="border:none;border-top:1px solid rgba(0,200,255,.25);margin:8px 0">
+                <div class="title">Relational Complexity</div>
+                <label>Relations per premise expansion: <span id="relCountVal">2</span></label>
+                <input id="relCount" type="number" min="0" value="2">
+                <div class="mut"><b>N-match rule:</b> Premise i matches i−N iff <b>all symbols from i−N reappear in i</b> and the <b>union</b> of their relations is <b>consistent</b> (no contradictions). Extra symbols allowed. Compass and level magnitudes are fixed.</div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="box" id="voiceBox">
+                <div class="title">Voice <span id="voiceStatus" class="badge">Ready</span></div>
+                <label>Country / Region</label>
+                <select id="regionSelect"></select>
+                <label>Voice</label>
+                <select id="voice"></select>
+                <div class="mut" id="voiceHint" style="margin-top:6px;">Menus fill instantly; they’ll auto‑update if the system exposes more voices.</div>
+                <label style="margin-top:10px">Rate: <span id="rateVal">0.95</span></label>
+                <input id="vRate" type="range" min="0.7" max="1.6" step="0.01" value="0.95">
+                <label>Pitch: <span id="pitchVal">1.28</span></label>
+                <input id="vPitch" type="range" min="0.7" max="2" step="0.01" value="1.28">
+                <label>Volume: <span id="vVolVal">1.00</span></label>
+                <input id="vVol" type="range" min="0" max="1" step="0.05" value="1.0">
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+                  <button id="testVoice" class="btn" type="button">Test voice</button>
+                  <button id="refreshVoices" class="btn" type="button">Refresh</button>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="box">
+                <div class="title">Controls / Status</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px">
+                  <button id="start" class="btn">▶ Start</button>
+                  <button id="pause" class="btn" disabled>⏸ Pause</button>
+                  <button id="reset" class="btn" disabled>🔄 Reset</button>
+                  <button id="hit" class="btn" disabled>✓ Match (<span class="kbd">Space</span>)</button>
+                  <button id="skip" class="btn" disabled>⏭ Skip</button>
+                </div>
+                <div class="mut" style="margin-top:8px"> Trial <span id="idx">0</span>/<span id="max">40</span> • Planned: <span id="ptype">—</span> • Actual: <span id="isMatch">—</span> </div>
+                <div class="mut">Correct: <span id="corr">0</span> • Errors: <span id="err">0</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="box" style="margin-top:12px">
+            <div class="title">Premise (spoken + visual)</div>
+            <div id="premiseText" aria-live="polite">—</div>
+          </div>
+        </div>
+      </div>`;
+      // Initialise voice game logic and start
+      if (window.voiceGame) {
+        setTimeout(() => { window.voiceGame.init(); window.voiceGame.startGame(); }, 50);
+      }
+    } else {
+      gameContent.innerHTML = `<p>This simplified example does not implement other modes.</p>`;
+    }
+  }
+</script>
+<script>
+// Voice N-Match game logic encapsulated in an IIFE.
+// This script exposes a global `voiceGame` object with an `init()` method
+// that should be called once the voice game UI has been inserted into the DOM.
+// The `startGame()` method can be called to begin a new session.  All
+// remaining state and helper functions are scoped to this module.
+
+(function () {
+  'use strict';
+
+  /* Helpers */
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // Directions and relational definitions
+  const DIRS = {
+    north: { x: 0, y: -1 },
+    south: { x: 0, y: 1 },
+    east: { x: 1, y: 0 },
+    west: { x: -1, y: 0 },
+    northeast: { x: 1, y: -1 },
+    northwest: { x: -1, y: -1 },
+    southeast: { x: 1, y: 1 },
+    southwest: { x: -1, y: 1 },
+  };
+  const CARDINALS = ['north', 'south', 'east', 'west'];
+  const DIAGONALS = ['northeast', 'northwest', 'southeast', 'southwest'];
+  const LEVELS = [1, 2, 3];
+
+  // Core voice game state variables
+  let N = 1; // N-back level
+  let MAX = 40; // total trials
+  let PAUSE_SEC = 1.0; // pause between relations
+  let PREMISE_INTERVAL_SEC = 1.0; // pause between premises
+  let RATE = 25; // target match rate (percentage)
+  let REL_COUNT = 2; // relations per premise
+
+  let idx = 0; // current trial index
+  let running = false;
+  let paused = false;
+  let waitTimer = null;
+  const history = [];
+  const planned = [];
+  let correct = 0;
+  let errors = 0;
+  let spokenParts = null;
+  let clauseIdx = 0;
+
+  // Voice synthesis variables
+  let VOICE = null;
+  let userRateChanged = false,
+    userPitchChanged = false;
+  const LAST_KEY = 'rnback_last_voice_v1';
+  const REGION_NAMES = {
+    AE: 'United Arab Emirates',
+    AU: 'Australia',
+    GB: 'United Kingdom',
+    UK: 'United Kingdom',
+    US: 'United States',
+    CA: 'Canada',
+    NZ: 'New Zealand',
+    IE: 'Ireland',
+    IN: 'India',
+    ZA: 'South Africa',
+    PH: 'Philippines',
+    SG: 'Singapore',
+    HK: 'Hong Kong',
+    NG: 'Nigeria',
+  };
+  const regionCode = (lang) =>
+    (String(lang).match(/^[a-z]{2,3}[-_]?([A-Z]{2})/) || [])[1] || '';
+  const regionName = (lang) =>
+    regionCode(lang) === 'AE'
+      ? 'United Arab Emirates'
+      : REGION_NAMES[regionCode(lang)] || ( /^en\b/i.test(lang) ? 'Global English' : 'Other Region' );
+  const MALE_NEG = /\b(male|boy|man|daniel|david|george|michael|mark|tom|fred|brian|kevin|liam|adam|andy|ben|bruce|charles|chris|eric|frank|jack|john|luke|matt|mike|nathan|paul|peter|ryan|steve|tim|alex(?!a)|james|william|robert|andrew|henry|richard|pablo|ricardo|mateo)\b/i;
+  const FEMALE_TOKENS = /\b(zira|samantha|karen|moira|tessa|serena|veena|victoria|joanna|jenny|aria|jessa|kimberly|kendra|ivy|nicole|salli|olivia|ella|ava|amy|emma|mia|sophia|isabella|natasha|catherine|allison|chloe|grace|zoe|sarah|sofia|camila|paulina|luciana|monica|anna|tatyana|zhiyu|hazel|helen|riva|luna|maya|noor|nour|layla|leila|hala|mariam|maryam|salma|dana|rania|yasmin|yasmine|amal|reem|farah|fatima|fatma|huda|nada|noura|nura)\b/i;
+
+  /* Voice selection helpers */
+  function voicesNow() {
+    try {
+      return speechSynthesis.getVoices() || [];
+    } catch (_) {
+      return [];
+    }
+  }
+  function vKey(v) {
+    return v.voiceURI || v.name + '|' + v.lang;
+  }
+  function labelForVoice(v) {
+    const lower = (v.name + ' ' + v.voiceURI).toLowerCase();
+    const m = lower.match(FEMALE_TOKENS);
+    if (m) {
+      const s = m[0];
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+    const region = regionName(v.lang);
+    const pools = {
+      'United Arab Emirates': ['Layla', 'Noor', 'Hala', 'Mariam', 'Salma', 'Dana', 'Rania', 'Yasmin', 'Amal', 'Leila'],
+      Australia: ['Zoe', 'Isla', 'Mia', 'Sophie', 'Olivia', 'Ava', 'Ella', 'Grace', 'Ruby', 'Lily', 'Chloe'],
+      'United Kingdom': ['Sophie', 'Amelia', 'Olivia', 'Grace', 'Ava', 'Emily', 'Isla', 'Lucy', 'Chloe', 'Mia'],
+      'United States': ['Amy', 'Emma', 'Ava', 'Mia', 'Sophia', 'Isabella', 'Olivia', 'Ella', 'Zoe', 'Grace'],
+      'Global English': ['Amy', 'Ella', 'Zoe', 'Mia', 'Ava', 'Sophie', 'Lily', 'Ruby', 'Grace', 'Chloe'],
+      'Other Region': ['Ella', 'Zoe', 'Mia', 'Ava', 'Sophie', 'Lily', 'Ruby', 'Grace', 'Chloe'],
+    };
+    const pool = pools[region] || pools['Other Region'];
+    let h = 0,
+      key = vKey(v);
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    return pool[h % pool.length];
+  }
+  function femaleScore(v) {
+    const n = (v.name + ' ' + v.voiceURI).toLowerCase();
+    let s = 0;
+    if (/\bfemale\b/.test(n)) s += 3;
+    if (FEMALE_TOKENS.test(n)) s += 2;
+    if (!MALE_NEG.test(n)) s += 1;
+    if (/AE$/i.test(v.lang)) s += 1;
+    if (/^en[-_](AU|GB|US)/i.test(v.lang)) s += 1;
+    return s;
+  }
+  function chooseBestVoice(list) {
+    try {
+      const last = localStorage.getItem(LAST_KEY);
+      if (last) {
+        const found = list.find((v) => vKey(v) === last);
+        if (found) return found;
+      }
+    } catch (_) {}
+    const sorted = list.slice().sort((a, b) => femaleScore(b) - femaleScore(a));
+    const au = sorted.find((v) => /en[-_]?AU/i.test(v.lang));
+    return au || sorted[0] || null;
+  }
+
+  // Populate region and voice selectors quickly
+  function populateMenusFast() {
+    const regionsOrder = [
+      'Australia',
+      'United Kingdom',
+      'United States',
+      'United Arab Emirates',
+      'Canada',
+      'Ireland',
+      'New Zealand',
+      'South Africa',
+      'Global English',
+      'Other Region',
+    ];
+    const regionSel = $('regionSelect');
+    if (!regionSel) return;
+    regionSel.innerHTML = '';
+    regionsOrder.forEach((r) => {
+      const o = document.createElement('option');
+      o.value = r;
+      o.textContent = r;
+      regionSel.appendChild(o);
+    });
+    regionSel.value = 'Australia';
+
+    const voiceSel = $('voice');
+    voiceSel.innerHTML = '';
+    const raw = voicesNow();
+    const list = raw.filter((v) => {
+      const n = (v.name + ' ' + v.voiceURI).toLowerCase();
+      return FEMALE_TOKENS.test(n) || (!MALE_NEG.test(n) && /\bfemale\b/.test(n));
+    });
+    const use = list.length ? list : raw;
+    const inRegion = (r) => use.filter((v) => regionName(v.lang) === r);
+    function fillVoicesFor(region) {
+      voiceSel.innerHTML = '';
+      const pack = inRegion(region);
+      (pack.length ? pack : use).forEach((v) => {
+        const o = document.createElement('option');
+        o.value = vKey(v);
+        o.textContent = labelForVoice(v);
+        o.title = `${v.name} — ${regionName(v.lang)} — ${v.lang}`;
+        voiceSel.appendChild(o);
+      });
+      const best = chooseBestVoice(use);
+      if (best) {
+        VOICE = best;
+        voiceSel.value = vKey(best);
+        try {
+          localStorage.setItem(LAST_KEY, vKey(best));
+        } catch (_) {}
+      }
+    }
+    fillVoicesFor(regionSel.value);
+    regionSel.onchange = () => fillVoicesFor(regionSel.value);
+    voiceSel.onchange = () => {
+      const key = voiceSel.value;
+      const found = voicesNow().find((v) => vKey(v) === key);
+      if (found) {
+        VOICE = found;
+        try {
+          localStorage.setItem(LAST_KEY, vKey(found));
+        } catch (_) {}
+      }
+    };
+    if ('speechSynthesis' in window) {
+      speechSynthesis.onvoiceschanged = () => {
+        populateMenusFast();
+      };
+    }
+  }
+
+  function applyVoiceDefaults() {
+    if (!userRateChanged) {
+      $('vRate').value = 0.95;
+      $('rateVal').textContent = '0.95';
+    }
+    if (!userPitchChanged) {
+      $('vPitch').value = 1.28;
+      $('pitchVal').textContent = '1.28';
+    }
+  }
+
+  async function speak(text) {
+    if (!('speechSynthesis' in window)) {
+      return;
+    }
+    const u = new SpeechSynthesisUtterance(text);
+    if (VOICE) u.voice = VOICE;
+    u.lang = VOICE && VOICE.lang ? VOICE.lang : 'en-AU';
+    u.rate = +$('vRate').value;
+    u.pitch = +$('vPitch').value;
+    u.volume = +$('vVol').value;
+    return new Promise((res) => {
+      let settled = false;
+      const done = () => {
+        if (!settled) {
+          settled = true;
+          res();
+        }
+      };
+      u.onend = done;
+      u.onerror = () => {
+        const pool = voicesNow();
+        const alt = pool.find((v) => vKey(v) !== (VOICE ? vKey(VOICE) : '')) || null;
+        if (alt) {
+          VOICE = alt;
+          try {
+            localStorage.setItem(LAST_KEY, vKey(alt));
+          } catch (_) {}
+          const u2 = new SpeechSynthesisUtterance(text);
+          u2.voice = VOICE;
+          u2.lang = VOICE.lang;
+          u2.rate = u.rate;
+          u2.pitch = u.pitch;
+          u2.volume = u.volume;
+          u2.onend = done;
+          u2.onerror = done;
+          try {
+            speechSynthesis.speak(u2);
+          } catch (_) {
+            done();
+          }
+        } else {
+          done();
+        }
+      };
+      try {
+        if (speechSynthesis.speaking) speechSynthesis.cancel();
+        speechSynthesis.speak(u);
+        setTimeout(done, 7000);
+      } catch (_) {
+        done();
+      }
+    });
+  }
+
+  // Relation helpers
+  function relationToString(rel) {
+    const parts = [];
+    let dx = rel.x,
+      dy = rel.y;
+    if (dx !== 0 || dy !== 0) {
+      let dirWord = '';
+      if (dy < 0) dirWord += 'north';
+      if (dy > 0) dirWord += 'south';
+      if (dx > 0) dirWord += dirWord ? ' east' : 'east';
+      if (dx < 0) dirWord += dirWord ? ' west' : 'west';
+      parts.push(dirWord.trim());
+    }
+    if (rel.z) {
+      const n = Math.abs(rel.z);
+      const word =
+        n === 1 ? 'one level' : n === 2 ? 'two levels' : `${n} levels`;
+      parts.push(`${word} ${rel.z > 0 ? 'above' : 'below'}`);
+    }
+    return parts.join(' and ');
+  }
+  function randomCompositeRel() {
+    let rel = { x: 0, y: 0, z: 0 };
+    const n = 1 + Math.floor(Math.random() * 1); // Use default of 1 composite relation by default
+    for (let i = 0; i < n; i++) {
+      const rand = Math.random();
+      if (rand < 0.8) {
+        // 80% horizontal; 60% diagonal, 40% cardinal
+        if (Math.random() < 0.6) {
+          const d = DIRS[DIAGONALS[Math.floor(Math.random() * DIAGONALS.length)]];
+          rel.x += d.x;
+          rel.y += d.y;
+        } else {
+          const d = DIRS[CARDINALS[Math.floor(Math.random() * CARDINALS.length)]];
+          rel.x += d.x;
+          rel.y += d.y;
+        }
+      } else {
+        const nLev = LEVELS[Math.floor(Math.random() * LEVELS.length)];
+        const up = Math.random() < 0.5;
+        rel.z += up ? nLev : -nLev;
+      }
+    }
+    return rel;
+  }
+  function clauseString(from, rel, to) {
+    return `${from} is ${relationToString(rel)} of ${to}`;
+  }
+  function token() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    return letters[Math.floor(Math.random() * 26)] + (1 + Math.floor(Math.random() * 9));
+  }
+  function uniqueTokens(k) {
+    const s = new Set();
+    while (s.size < k) s.add(token());
+    return [...s];
+  }
+  function randomPremise() {
+    const baseTokens = uniqueTokens(3);
+    const shuffled = shuffle(baseTokens.slice());
+    const needed = REL_COUNT * 2;
+    const sel = [];
+    for (let i = 0; i < needed; i++) {
+      sel.push(shuffled[i % shuffled.length]);
+    }
+    const clauses = [];
+    for (let i = 0; i < REL_COUNT; i++) {
+      const u = sel[2 * i];
+      let v = sel[2 * i + 1];
+      if (u === v) {
+        v = shuffled.find((tok) => tok !== u) || u;
+      }
+      clauses.push(clauseString(u, randomCompositeRel(), v));
+    }
+    return clauses.join(' and ');
+  }
+  function parseRelationWords(str) {
+    str = str.trim().toLowerCase();
+    let vec = { x: 0, y: 0, z: 0 };
+    const parts = str.split(/\s+and\s+/);
+    parts.forEach((part) => {
+      part = part.trim();
+      let m = part.match(/^(one|two|three|\d+)\s+levels?\s+(above|below)$/);
+      if (m) {
+        const n = m[1];
+        let k = n === 'one' ? 1 : n === 'two' ? 2 : n === 'three' ? 3 : +n;
+        vec.z += m[2] === 'above' ? k : -k;
+        return;
+      }
+      if (part) {
+        part = part.replace(/\s+/g, '');
+        const d = DIRS[part];
+        if (d) {
+          vec.x += d.x;
+          vec.y += d.y;
+          return;
+        }
+      }
+    });
+    return vec;
+  }
+  function parsePremise(sentence) {
+    let s = String(sentence).trim();
+    s = s.replace(/^if\s+/i, '');
+    s = s.replace(/\bthen\b/gi, 'and');
+    const parts = s
+      .split(/\s+and\s+/i)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const edges = [];
+    const nodes = new Set();
+    parts.forEach((part) => {
+      const m = part.match(/^([A-Z]\d+)\s+is\s+(.+?)\s+of\s+([A-Z]\d+)$/i);
+      if (m) {
+        const u = m[1],
+          relWords = m[2],
+          v = m[3];
+        edges.push({ u, v, rel: parseRelationWords(relWords) });
+        nodes.add(u);
+        nodes.add(v);
+      }
+    });
+    return { nodes: [...nodes], edges };
+  }
+  function invertRel(r) {
+    return { x: -r.x, y: -r.y, z: -r.z };
+  }
+  function vecAdd(a, b) {
+    return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
+  }
+  function closureFromEdges(edges) {
+    const adj = new Map(),
+      nodes = new Set();
+    function push(u, v, rel) {
+      if (!adj.has(u)) adj.set(u, []);
+      adj.get(u).push({ v, rel });
+      nodes.add(u);
+      nodes.add(v);
+    }
+    edges.forEach((e) => {
+      push(e.u, e.v, e.rel);
+      push(e.v, e.u, invertRel(e.rel));
+    });
+    const coords = new Map();
+    let ok = true;
+    nodes.forEach((start) => {
+      if (coords.has(start)) return;
+      coords.set(start, { x: 0, y: 0, z: 0 });
+      const stack = [start];
+      while (stack.length) {
+        const u = stack.pop(),
+          pu = coords.get(u);
+        (adj.get(u) || []).forEach(({ v, rel }) => {
+          const want = vecAdd(pu, rel);
+          if (!coords.has(v)) {
+            coords.set(v, want);
+            stack.push(v);
+          } else {
+            const pv = coords.get(v);
+            if (pv.x !== want.x || pv.y !== want.y || pv.z !== want.z) ok = false;
+          }
+        });
+      }
+    });
+    return { ok, nodes: [...nodes], coords };
+  }
+  function sentencesRelMatch(a, b) {
+    const A = parsePremise(a),
+      B = parsePremise(b);
+    for (const s of A.nodes) {
+      if (!B.nodes.includes(s)) return false;
+    }
+    const merged = closureFromEdges([...A.edges, ...B.edges]);
+    return merged.ok;
+  }
+  function buildMatching(prev) {
+    const P = parsePremise(prev);
+    if (!P.edges.length) return prev;
+    const parts = P.edges.map((e) => {
+      const flip = Math.random() < 0.5;
+      const u = flip ? e.v : e.u;
+      const v = flip ? e.u : e.v;
+      const rel = flip ? invertRel(e.rel) : e.rel;
+      return clauseString(u, rel, v);
+    });
+    return parts.join(' and ');
+  }
+  function buildNonMatching(prev) {
+    const prevNodes = new Set(parsePremise(prev).nodes);
+    function freshToken() {
+      let t;
+      do {
+        t = token();
+      } while (prevNodes.has(t));
+      prevNodes.add(t);
+      return t;
+    }
+    const base = [];
+    for (let i = 0; i < 3; i++) {
+      base.push(freshToken());
+    }
+    const shuffled = shuffle(base.slice());
+    const needed = REL_COUNT * 2;
+    const sel = [];
+    for (let i = 0; i < needed; i++) {
+      sel.push(shuffled[i % shuffled.length]);
+    }
+    const clauses = [];
+    for (let i = 0; i < REL_COUNT; i++) {
+      const u = sel[2 * i];
+      let v = sel[2 * i + 1];
+      if (u === v) {
+        v = shuffled.find((tok) => tok !== u) || u;
+      }
+      clauses.push(clauseString(u, randomCompositeRel(), v));
+    }
+    return clauses.join(' and ');
+  }
+  function verbalizeClause(clause) {
+    return clause.replace(/([A-Z])(\d+)/g, (m, letter, digits) => {
+      return `${letter} ${digits
+        .split('')
+        .map((d) => ({
+          0: 'zero',
+          1: 'one',
+          2: 'two',
+          3: 'three',
+          4: 'four',
+          5: 'five',
+          6: 'six',
+          7: 'seven',
+          8: 'eight',
+          9: 'nine',
+        }[d] || d))
+        .join(' ')}`;
+    });
+  }
+  function verbalizeSentence(s) {
+    if (/^if\b/i.test(s)) {
+      let withoutIf = s.replace(/^if\s+/i, '');
+      const [antecedent, consequent] = withoutIf.split(/\s+then\s+/i);
+      const antecedentClauses = antecedent
+        .split(/\s+and\s+/i)
+        .map((p) => verbalizeClause(p.trim()));
+      const consequentClause = verbalizeClause(consequent.trim());
+      return [...antecedentClauses.map((c) => c), `Then ${consequentClause}`];
+    }
+    const parts = s.split(/\s+and\s+/i).map((p) => p.trim());
+    return parts.map((p) => verbalizeClause(p));
+  }
+
+  /* Sequence planning and evaluation */
+  function planSequence() {
+    planned.length = 0;
+    for (let i = 0; i < MAX; i++) planned.push(false);
+    const eligible = [];
+    for (let i = N; i < MAX; i++) eligible.push(i);
+    const k = Math.round((RATE / 100) * eligible.length);
+    shuffle(eligible);
+    for (let i = 0; i < k; i++) {
+      planned[eligible[i]] = true;
+    }
+  }
+  function isActualMatch(i) {
+    return i >= N && sentencesRelMatch(history[i - N], history[i]);
+  }
+
+  function buildPremiseVisual(raw) {
+    const parts = raw.split(/\s+and\s+/i).map((p) => p.trim());
+    const el = $('premiseText');
+    el.innerHTML = '';
+    parts.forEach((part, i) => {
+      const sp = document.createElement('span');
+      sp.className = 'rel';
+      sp.textContent = part;
+      el.appendChild(sp);
+      if (i < parts.length - 1) {
+        const sep = document.createElement('span');
+        sep.className = 'sep';
+        sep.textContent = ' and ';
+        el.appendChild(sep);
+      }
+    });
+    return parts;
+  }
+  function setActivePart(i) {
+    [...$('premiseText').querySelectorAll('.rel')].forEach((n, idx) => {
+      n.classList.toggle('active', idx === i);
+    });
+  }
+  async function speakPremise() {
+    if (!spokenParts) return;
+    for (; running && !paused && clauseIdx < spokenParts.length; clauseIdx++) {
+      setActivePart(clauseIdx);
+      await speak(spokenParts[clauseIdx] + '.');
+      if (!running || paused) return;
+      if (clauseIdx < spokenParts.length - 1) {
+        await new Promise((res) => {
+          waitTimer = setTimeout(() => {
+            waitTimer = null;
+            res();
+          }, PAUSE_SEC * 1000);
+        });
+        if (!running || paused) return;
+      }
+    }
+    setActivePart(-1);
+    if (running && !paused) {
+      await new Promise((res) => {
+        waitTimer = setTimeout(() => {
+          waitTimer = null;
+          res();
+        }, PREMISE_INTERVAL_SEC * 1000);
+      });
+    }
+  }
+  function nextPremiseString() {
+    if (idx >= N) {
+      if (planned[idx]) return buildMatching(history[idx - N]);
+      return buildNonMatching(history[idx - N]);
+    }
+    return randomPremise();
+  }
+  async function runTrial() {
+    if (!running || paused) return;
+    if (idx >= MAX) {
+      stop();
+      return;
+    }
+    const s = nextPremiseString();
+    history[idx] = s;
+    buildPremiseVisual(s);
+    spokenParts = verbalizeSentence(s);
+    clauseIdx = 0;
+    await speakPremise();
+    if (!running || paused) return;
+    idx++;
+    updateUI();
+    runTrial();
+  }
+
+  /* Game control functions */
+  function start() {
+    if (running) return;
+    running = true;
+    paused = false;
+    try {
+      speechSynthesis.cancel();
+    } catch (_) {}
+    planSequence();
+    idx = 0;
+    correct = 0;
+    errors = 0;
+    updateUI();
+    $('pause').disabled = false;
+    $('reset').disabled = false;
+    $('hit').disabled = false;
+    $('skip').disabled = false;
+    runTrial();
+  }
+  function stop() {
+    running = false;
+    paused = false;
+    clearTimeout(waitTimer);
+    waitTimer = null;
+    spokenParts = null;
+    clauseIdx = 0;
+    try {
+      speechSynthesis.cancel();
+    } catch (_) {}
+    $('pause').disabled = true;
+    $('skip').disabled = true;
+  }
+  function togglePause() {
+    if (!running && !paused) return;
+    if (!paused) {
+      paused = true;
+      clearTimeout(waitTimer);
+      waitTimer = null;
+      try {
+        speechSynthesis.cancel();
+      } catch (_) {}
+      $('pause').textContent = '▶ Resume';
+    } else {
+      paused = false;
+      $('pause').textContent = '⏸ Pause';
+      if (spokenParts && clauseIdx < spokenParts.length) {
+        speakPremise().then(() => {
+          if (running && !paused) {
+            idx++;
+            updateUI();
+            runTrial();
+          }
+        });
+      } else {
+        idx++;
+        updateUI();
+        runTrial();
+      }
+    }
+  }
+  function reset() {
+    stop();
+    $('start').disabled = false;
+    $('pause').textContent = '⏸ Pause';
+    idx = 0;
+    correct = 0;
+    errors = 0;
+    $('premiseText').textContent = '—';
+    updateUI();
+  }
+  function registerHit() {
+    if (!running) return;
+    if (isActualMatch(idx)) correct++;
+    else errors++;
+    updateUI();
+  }
+  function skip() {
+    if (!running) return;
+    clearTimeout(waitTimer);
+    try {
+      speechSynthesis.cancel();
+    } catch (_) {}
+    idx++;
+    updateUI();
+    runTrial();
+  }
+  function updateUI() {
+    if (!$('idx')) return;
+    $('idx').textContent = idx;
+    $('max').textContent = MAX;
+    $('ptype').textContent =
+      planned[idx] && idx >= N ? 'planned MATCH' : 'planned NON-match';
+    $('isMatch').textContent = idx >= N ? String(isActualMatch(idx)).toUpperCase() : '—';
+    $('corr').textContent = correct;
+    $('err').textContent = errors;
+    $('nVal').textContent = N;
+    $('tVal').textContent = MAX;
+    $('pVal').textContent = PAUSE_SEC.toFixed(1) + ' s';
+    $('premiseIntervalVal').textContent = PREMISE_INTERVAL_SEC.toFixed(1) + ' s';
+    $('rVal').textContent = RATE + '%';
+    $('relCountVal').textContent = REL_COUNT;
+  }
+
+  /* Public API exposed on window.voiceGame */
+  const voiceGame = {};
+  voiceGame.init = function () {
+    // Only run if voice game UI exists in DOM
+    if (!$('start')) return;
+    populateMenusFast();
+    applyVoiceDefaults();
+    // show ready status
+    const vs = $('voiceStatus');
+    if (vs) vs.textContent = 'Ready';
+    // sync displayed values
+    $('relCountVal').textContent = REL_COUNT;
+    $('premiseIntervalVal').textContent = PREMISE_INTERVAL_SEC.toFixed(1) + ' s';
+    updateUI();
+    // bind control handlers
+    $('start').onclick = async () => {
+      // ensure we have a voice selected
+      if (!VOICE) {
+        populateMenusFast();
+        const raw = voicesNow();
+        if (raw.length) {
+          VOICE = chooseBestVoice(raw);
+          try {
+            localStorage.setItem(LAST_KEY, vKey(VOICE));
+          } catch (_) {}
+        }
+      }
+      await speak('Ready.');
+      start();
+    };
+    $('pause').onclick = togglePause;
+    $('reset').onclick = reset;
+    $('hit').onclick = registerHit;
+    $('skip').onclick = skip;
+    // update parameter controls
+    $('n').oninput = (e) => {
+      N = +e.target.value;
+      $('nVal').textContent = N;
+    };
+    $('trials').oninput = (e) => {
+      MAX = +e.target.value;
+      $('tVal').textContent = MAX;
+      $('max').textContent = MAX;
+    };
+    $('pauseTime').oninput = (e) => {
+      PAUSE_SEC = +e.target.value;
+      $('pVal').textContent = PAUSE_SEC.toFixed(1) + ' s';
+    };
+    $('premiseInterval').oninput = (e) => {
+      PREMISE_INTERVAL_SEC = +e.target.value;
+      $('premiseIntervalVal').textContent = PREMISE_INTERVAL_SEC.toFixed(1) + ' s';
+    };
+    $('rate').oninput = (e) => {
+      RATE = +e.target.value;
+      $('rVal').textContent = RATE + '%';
+    };
+    $('relCount').oninput = (e) => {
+      REL_COUNT = +e.target.value;
+      $('relCountVal').textContent = REL_COUNT;
+    };
+    $('vRate').oninput = (e) => {
+      userRateChanged = true;
+      $('rateVal').textContent = e.target.value;
+    };
+    $('vPitch').oninput = (e) => {
+      userPitchChanged = true;
+      $('pitchVal').textContent = e.target.value;
+    };
+    $('vVol').oninput = (e) => {
+      $('vVolVal').textContent = e.target.value;
+    };
+    $('refreshVoices').onclick = () => populateMenusFast();
+    $('testVoice').onclick = async () => {
+      if (!VOICE) populateMenusFast();
+      await speak('Voice check. Example: C three is north east of H seven.');
+    };
+    // key listener for match
+    window.addEventListener('keydown', (e) => {
+      if (!running) return;
+      if (e.key === ' ' || e.key === 'Space' || e.code === 'Space') {
+        registerHit();
+        e.preventDefault();
+      }
+    });
+  };
+  voiceGame.startGame = function () {
+    start();
+  };
+  voiceGame.resetGame = function () {
+    reset();
+  };
+  // Attach to global scope
+  window.voiceGame = voiceGame;
+})();
+</script>
+</body>
+</html>
