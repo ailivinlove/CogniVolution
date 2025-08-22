@@ -79,7 +79,7 @@
         <div class="mode-card" data-mode="relational"><h3>Relational N-Back</h3><p>Focus purely on logical reasoning. Analyze spatial relationships between entities across n-back trials.</p></div>
         <div class="mode-card" data-mode="spatial"><h3>Spatial N-Back</h3><p>Track square positions in a 3×3 grid across n-back trials with extreme cognitive interference.</p></div>
         <div class="mode-card" data-mode="dual"><h3>Dual N-Back</h3><p>Simultaneously track both spatial positions and logical relationships.</p></div>
-        <div class="mode-card" data-mode="voice"><h3>Voice N-Match</h3><p>Logic-only N-match game with spoken premises. Test your reasoning with voice-guided challenges.</p></div>
+        <div class="mode-card" data-mode="voice"><h3>Apex</h3><p>Logic-only N-match game with spoken premises. Test your reasoning with voice-guided challenges.</p></div>
       </div>
       <button id="continueToSetup" class="btn btn-primary" style="margin-top:2rem;" disabled>Continue to Setup →</button>
     </div>
@@ -143,7 +143,7 @@
   function renderSetup() {
     const container = document.getElementById('setupContent');
     if (selectedMode === 'voice') {
-      container.innerHTML = `<h3 style="margin-bottom:1rem;">Voice N-Match Setup</h3><p>This mode uses spoken relational premises. You can adjust N-back level and trials here; additional voice settings are configured in-game.</p><div class="control-group"><label>N-Back Level: <span id="nBackLevelVal">1</span></label><input id="nBackLevel" type="range" min="1" max="10" value="1"></div><div class="control-group"><label>Session Length: <span id="maxTrialsVal">40</span> trials</label><input id="maxTrials" type="range" min="10" max="100" step="5" value="40"></div>`;
+      container.innerHTML = `<h3 style="margin-bottom:1rem;">Apex Setup</h3><p>This mode uses spoken relational premises. You can adjust N-back level and trials here; additional voice settings are configured in-game.</p><div class="control-group"><label>N-Back Level: <span id="nBackLevelVal">1</span></label><input id="nBackLevel" type="range" min="1" max="10" value="1"></div><div class="control-group"><label>Session Length: <span id="maxTrialsVal">40</span> trials</label><input id="maxTrials" type="range" min="10" max="100" step="5" value="40"></div>`;
       document.getElementById('nBackLevel').oninput = e => { document.getElementById('nBackLevelVal').textContent = e.target.value; };
       document.getElementById('maxTrials').oninput = e => { document.getElementById('maxTrialsVal').textContent = e.target.value; };
     } else {
@@ -232,7 +232,7 @@
   }
 </script>
 <script>
-// Voice N-Match game logic encapsulated in an IIFE.
+// Apex game logic encapsulated in an IIFE.
 // This script exposes a global `voiceGame` object with an `init()` method
 // that should be called once the voice game UI has been inserted into the DOM.
 // The `startGame()` method can be called to begin a new session.  All
